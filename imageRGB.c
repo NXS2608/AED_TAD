@@ -284,10 +284,17 @@ void ImageDestroy(Image* imgp) {
 Image ImageCopy(const Image img) {
   assert(img != NULL);
 
-  // TO BE COMPLETED
-  // ...
+  Image new_img = AllocateImageHeader(img->width,img->height);
+  new_img->num_colors = img->num_colors;
+  memcpy(new_img->LUT, img->LUT, img->num_colors * sizeof(rgb_t));
 
-  return NULL;
+  for(int i=0; i < (int)img->height; i++){
+    new_img->image[i] = malloc(img->width * sizeof(uint16));
+    check(new_img->image[i] != NULL, "malloc failed");
+    memcpy(new_img->image[i], img->image[i], img->width * sizeof(uint16));
+  }
+
+  return new_img;
 }
 
 /// Printing on the console
@@ -586,12 +593,23 @@ int ImageIsDifferent(const Image img1, const Image img2) {
 Image ImageRotate90CW(const Image img) {
   assert(img != NULL);
 
-  // TO BE COMPLETED
-  // ...
+  Image new_img = AllocateImageHeader(img->height, img->width);
+  new_img->num_colors = img->num_colors;
+  memcpy(new_img->LUT, img->LUT, img->num_colors * sizeof(rgb_t));
 
-  return NULL;
+  for (uint32 i = 0; i < new_img->height; i++) {
+    new_img->image[i] = malloc(new_img->width * sizeof(uint16));
+    check(new_img->image[i] != NULL, "malloc failed");
+  }
+
+  for (uint32 i = 0; i < img->height; i++) {
+    for (uint32 j = 0; j < img->width; j++) {
+      new_img->image[j][img->height - 1 - i] = img->image[i][j];
+    }
+  }
+
+  return new_img;
 }
-
 /// Rotate 180 degrees clockwise (CW).
 /// Returns a rotated version of the image.
 /// Ensures: The original img is not modified.
@@ -601,10 +619,22 @@ Image ImageRotate90CW(const Image img) {
 Image ImageRotate180CW(const Image img) {
   assert(img != NULL);
 
-  // TO BE COMPLETED
-  // ...
+  Image new_img = AllocateImageHeader(img->height, img->width);
+  new_img->num_colors = img->num_colors;
+  memcpy(new_img->LUT, img->LUT, img->num_colors * sizeof(rgb_t));
 
-  return NULL;
+  for (uint32 i = 0; i < new_img->height; i++) {
+    new_img->image[i] = malloc(new_img->width * sizeof(uint16));
+    check(new_img->image[i] != NULL, "malloc failed");
+  }
+
+  for(uint32 i = 0; i < img->height; i++){
+    for(uint32 j = 0; j < img->width; j++){
+      new_img->image[img->width - 1 - i][img->height - 1 - j] = img->image[i][j];
+    }
+  }
+
+  return new_img;
 }
 
 /// Check whether pixel coords (u, v) are inside img.
@@ -632,15 +662,33 @@ int ImageIsValidPixel(const Image img, int u, int v) {
 /// Each function carries out a different version of the algorithm.
 
 /// Region growing using the recursive flood-filling algorithm.
+static int ImageRegionFillingRecursive_aux(Image img, int u, int v, uint16 label, uint16 background_label) {
+  if (!ImageIsValidPixel(img, u, v) || img->image[v][u] != background_label) {
+    return 0;
+  }
+
+  img->image[v][u] = label;
+  int count = 1;
+
+  count += ImageRegionFillingRecursive_aux(img, u + 1, v, label, background_label);
+  count += ImageRegionFillingRecursive_aux(img, u - 1, v, label, background_label);
+  count += ImageRegionFillingRecursive_aux(img, u, v + 1, label, background_label);
+  count += ImageRegionFillingRecursive_aux(img, u, v - 1, label, background_label);
+
+  return count;
+}
+
 int ImageRegionFillingRecursive(Image img, int u, int v, uint16 label) {
   assert(img != NULL);
   assert(ImageIsValidPixel(img, u, v));
   assert(label < FIXED_LUT_SIZE);
 
-  // TO BE COMPLETED
-  // ...
+  uint16 background_label = img->image[v][u];
+  if (background_label == label) {
+    return 0;
+  }
 
-  return 0;
+  return ImageRegionFillingRecursive_aux(img, u, v, label, background_label);
 }
 
 /// Region growing using a STACK of pixel coordinates to
@@ -683,8 +731,19 @@ int ImageSegmentation(Image img, FillingFunction fillFunct) {
   assert(img != NULL);
   assert(fillFunct != NULL);
 
-  // TO BE COMPLETED
-  // ...
+  int regions = 0;
+  rgb_t color = 0;
 
-  return 0;
+  for (uint32 i = 0; i < img->height; i++) {
+    for (uint32 j = 0; j < img->width; j++) {
+      if (img->image[i][j] == WHITE) {
+        regions++;
+        color = GenerateNextColor(color);
+        uint16 label = LUTAllocColor(img, color);
+        fillFunct(img, j, i, label);
+      }
+    }
+  }
+
+  return regions;
 }
