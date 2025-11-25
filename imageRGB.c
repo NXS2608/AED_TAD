@@ -563,10 +563,32 @@ int ImageIsEqual(const Image img1, const Image img2) {
   assert(img1 != NULL);
   assert(img2 != NULL);
 
-  // TO BE COMPLETED
-  // ...
+  if (img1->width != img2->width) {
+    return 0;
+  }
 
-  return 0;
+  if (img1->height != img2->height) {
+    return 0;
+  }
+
+  for (uint32 row = 0; row < img1->height; row++) {
+    for (uint32 col = 0; col < img1->width; col++) {
+      
+      PIXMEM += 2;
+      uint16 index1 = img1->image[row][col];
+      uint16 index2 = img2->image[row][col];
+
+      PIXMEM += 2;
+      rgb_t color1 = img1->LUT[index1];
+      rgb_t color2 = img2->LUT[index2];
+
+      if (color1 != color2) {
+        return 0;
+      }
+    }
+  }
+
+  return 1;
 }
 
 int ImageIsDifferent(const Image img1, const Image img2) {
@@ -593,13 +615,12 @@ int ImageIsDifferent(const Image img1, const Image img2) {
 Image ImageRotate90CW(const Image img) {
   assert(img != NULL);
 
-  Image new_img = AllocateImageHeader(img->height, img->width);
-  new_img->num_colors = img->num_colors;
-  memcpy(new_img->LUT, img->LUT, img->num_colors * sizeof(rgb_t));
-
-  for (uint32 i = 0; i < new_img->height; i++) {
-    new_img->image[i] = malloc(new_img->width * sizeof(uint16));
-    check(new_img->image[i] != NULL, "malloc failed");
+  Image new_img = ImageCreate(img->height, img->width);
+  if(img == NULL){
+    return NULL;
+  }
+  for(uint16 lut_index = 0; lut_index < img->num_colors; lut_index++){
+    LUTAllocColor(new_img, img->LUT[lut_index]);
   }
 
   for (uint32 i = 0; i < img->height; i++) {
@@ -619,18 +640,18 @@ Image ImageRotate90CW(const Image img) {
 Image ImageRotate180CW(const Image img) {
   assert(img != NULL);
 
-  Image new_img = AllocateImageHeader(img->height, img->width);
-  new_img->num_colors = img->num_colors;
-  memcpy(new_img->LUT, img->LUT, img->num_colors * sizeof(rgb_t));
-
-  for (uint32 i = 0; i < new_img->height; i++) {
-    new_img->image[i] = malloc(new_img->width * sizeof(uint16));
-    check(new_img->image[i] != NULL, "malloc failed");
+  Image new_img = ImageCreate(img->width, img->height);
+  if(img == NULL){
+    return NULL;
   }
+  for(uint16 lut_index = 0; lut_index < img->num_colors; lut_index++){
+    LUTAllocColor(new_img, img->LUT[lut_index]);
+  }
+
 
   for(uint32 i = 0; i < img->height; i++){
     for(uint32 j = 0; j < img->width; j++){
-      new_img->image[img->width - 1 - i][img->height - 1 - j] = img->image[i][j];
+      new_img->image[img->height - 1 - i][img->width - 1 - j] = img->image[i][j];
     }
   }
 
@@ -660,13 +681,12 @@ int ImageIsValidPixel(const Image img, int u, int v) {
 /// And return: the number of labeled pixels.
 
 /// Each function carries out a different version of the algorithm.
-
+int reccount = 0;
 /// Region growing using the recursive flood-filling algorithm.
 static int ImageRegionFillingRecursive_aux(Image img, int u, int v, uint16 label, uint16 background_label) {
   if (!ImageIsValidPixel(img, u, v) || img->image[v][u] != background_label) {
     return 0;
   }
-
   img->image[v][u] = label;
   int count = 1;
 
@@ -698,10 +718,42 @@ int ImageRegionFillingWithSTACK(Image img, int u, int v, uint16 label) {
   assert(ImageIsValidPixel(img, u, v));
   assert(label < FIXED_LUT_SIZE);
 
-  // TO BE COMPLETED
-  // ...
+  uint16 background_label = img->image[v][u];
+  if (background_label == label) return 0;
 
-  return 0;
+  int count = 0;
+
+  Stack* stack = StackCreate(4096);
+  assert(stack != NULL);
+
+  img->image[v][u] = label;
+  count++;
+  StackPush(stack, PixelCoordsCreate(u, v));
+
+  static const int dx[] = {0, 0, 1, -1};
+  static const int dy[] = {1, -1, 0, 0};
+
+  while (!StackIsEmpty(stack)) {
+    PixelCoords p = StackPop(stack );
+
+    for (int i = 0; i < 4; i++) {
+      int nx = p.u + dx[i];
+      int ny = p.v + dy[i];
+
+      if (ImageIsValidPixel(img, nx, ny)) {
+        if (img->image[ny][nx] == background_label) {
+          
+          img->image[ny][nx] = label;
+          count++;
+          StackPush(stack, PixelCoordsCreate(nx, ny));
+        }
+      }
+    }
+    
+  }
+  StackDestroy(&stack);
+
+  return count;
 }
 
 /// Region growing using a QUEUE of pixel coordinates to
@@ -711,10 +763,41 @@ int ImageRegionFillingWithQUEUE(Image img, int u, int v, uint16 label) {
   assert(ImageIsValidPixel(img, u, v));
   assert(label < FIXED_LUT_SIZE);
 
-  // TO BE COMPLETED
-  // ...
+  uint16 background_label = img->image[v][u];
+  if (background_label == label) return 0;
 
-  return 0;
+  int count = 0;
+
+  Queue* queue = QueueCreate(4096);
+  check(queue != NULL, "QueueCreate failed");
+
+  img->image[v][u] = label;
+  count++;
+  QueueEnqueue(queue, PixelCoordsCreate(u, v));
+
+  static const int dx[] = {0, 0, 1, -1};
+  static const int dy[] = {1, -1, 0, 0};
+
+  while (!QueueIsEmpty(queue)) {
+    PixelCoords p = QueueDequeue(queue);
+
+    for (int i = 0; i < 4; i++) {
+      int nx = p.u + dx[i];
+      int ny = p.v + dy[i];
+
+      if (ImageIsValidPixel(img, nx, ny)) {
+        if (img->image[ny][nx] == background_label) {
+          
+          img->image[ny][nx] = label;
+          count++;
+          QueueEnqueue(queue, PixelCoordsCreate(nx, ny));
+        }
+      }
+    }
+  }
+
+  QueueDestroy(&queue);
+  return count;
 }
 
 /// Image Segmentation
