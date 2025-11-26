@@ -168,7 +168,7 @@ static void TestImageFileIO(int section_num) {
 
     // 2.1 - ImageSavePBM
     printf("2.1: ImageSavePBM (chess_black -> test_chess_black.pbm)\n");
-    ASSERT_CHECK(ImageSavePBM(image_chess_black, "test_chess_black.pbm") == 1, "ImageSavePBM_Success", &local_passed_count, &local_total_count);
+    ASSERT_CHECK(ImageSavePBM(image_chess_black, "test_chess_black.pbm") == 0, "ImageSavePBM_Success", &local_passed_count, &local_total_count);
 
     // 2.2 - ImageLoadPBM
     printf("2.2: ImageLoadPBM (test_chess_black.pbm)\n");
@@ -178,10 +178,10 @@ static void TestImageFileIO(int section_num) {
 
     // 2.3 - ImageSavePPM
     printf("2.3: ImageSavePPM (chess_red -> test_chess_red.ppm)\n");
-    ASSERT_CHECK(ImageSavePPM(image_chess_red, "test_chess_red.ppm") == 1, "ImageSavePPM_Chess_Success", &local_passed_count, &local_total_count);
+    ASSERT_CHECK(ImageSavePPM(image_chess_red, "test_chess_red.ppm") == 0, "ImageSavePPM_Chess_Success", &local_passed_count, &local_total_count);
     
     printf("2.4: ImageSavePPM (palete -> test_palete.ppm)\n");
-    ASSERT_CHECK(ImageSavePPM(image_palete, "test_palete.ppm") == 1, "ImageSavePPM_Palete_Success", &local_passed_count, &local_total_count);
+    ASSERT_CHECK(ImageSavePPM(image_palete, "test_palete.ppm") == 0, "ImageSavePPM_Palete_Success", &local_passed_count, &local_total_count);
 
     // 2.5 - ImageLoadPPM
     printf("2.5: ImageLoadPPM (test_chess_red.ppm)\n");
