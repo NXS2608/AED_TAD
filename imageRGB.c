@@ -681,7 +681,6 @@ int ImageIsValidPixel(const Image img, int u, int v) {
 /// And return: the number of labeled pixels.
 
 /// Each function carries out a different version of the algorithm.
-int reccount = 0;
 /// Region growing using the recursive flood-filling algorithm.
 static int ImageRegionFillingRecursive_aux(Image img, int u, int v, uint16 label, uint16 background_label) {
   if (!ImageIsValidPixel(img, u, v) || img->image[v][u] != background_label) {
